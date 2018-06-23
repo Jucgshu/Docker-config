@@ -1,0 +1,139 @@
+---
+version: '3'
+
+services:
+  reverse-proxy:
+    image: traefik
+    container_name: traefik
+    restart: always
+    domainname: ${DOMAINNAME}
+    command: --docker
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock 
+      - /opt/appdata/docker/traefik.toml:/traefik.toml
+      - /opt/appdata/docker/acme.json:/acme.json
+    networks:
+      - traefik_network
+        #- default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_network"
+
+#----------------------------------------------------------------
+  nginx-dizolo:
+    image: nginx
+    container_name: nginx-dizolo
+    restart: always
+    volumes:
+      - /opt/appdata/nginx-dizolo:/usr/share/nginx/html:ro
+        #environment:
+        #  - PUID=${PUID}
+        #  - PGID=${PGID}
+        #  - TZ=Europe/Paris
+    expose:
+      - "80"
+    networks:
+      - traefik_network 
+    labels:
+      - "traefik.docker.network=traefik_network"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:${DOMAINNAME}"
+      - "traefik.port=80"
+
+#----------------------------------------------------------------
+  nginx-startpage:
+    image: nginx
+    container_name: nginx-startpage
+    restart: always
+    volumes:
+      - /opt/appdata/nginx-startpage:/usr/share/nginx/html:ro
+    expose:
+      - "80"
+    networks:
+      - traefik_network 
+    labels:
+      - "traefik.docker.network=traefik_network"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:search.${DOMAINNAME}"
+      - "traefik.port=80"
+
+#----------------------------------------------------------------
+  emby:
+    image: emby/embyserver
+    container_name: emby
+    restart: always
+    volumes:
+      - /opt/appdata/emby/config:/config
+      - /mnt/videos/Films:/movies
+      - /mnt/storage/TVShows:/tvshows
+      - /mnt/storage/Animes:/tvanime
+      - /mnt/storage/audio/music:/music
+      - /mnt/videos/Emissions:/emissions
+    environment:
+      - UID=${PUID}
+      - GID=${PGID}
+        #- GIDLIST=1001
+      - TZ=Europe/Paris
+    networks:
+      - traefik_network
+        #  - default
+    expose:
+        - "8096"
+    labels:
+      - "traefik.docker.network=traefik_network"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:media.${DOMAINNAME}"
+      - "traefik.port=8096"
+
+#----------------------------------------------------------------
+  calibre-web:
+    image: linuxserver/calibre-web
+    container_name: calibre-web
+    restart: always
+    volumes:
+      - /opt/appdata/calibre-web/config:/config
+      - /home/.data/documents/bouquins:/books
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Paris
+    expose:
+      - "8083"
+    networks:
+      - traefik_network 
+    labels:
+      - "traefik.docker.network=traefik_network"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:books.${DOMAINNAME}"
+      - "traefik.port=8083"
+
+#----------------------------------------------------------------
+  freshrss:
+    image: linuxserver/freshrss
+    container_name: freshrss
+    restart: always
+    volumes:
+      - /opt/appdata/freshrss/config:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Paris
+    expose:
+      - "80"
+    networks:
+      - traefik_network 
+    labels:
+      - "traefik.docker.network=traefik_network"
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:feeds.${DOMAINNAME}"
+      - "traefik.port=80"
+ 
+#----------------------------------------------------------------
+networks:
+  traefik_network:
+    external: true
+  default:
+    driver: bridge
