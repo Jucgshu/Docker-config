@@ -1,23 +1,35 @@
 ---
-version: '3'
+version: '3.6'
 
 services:
   reverse-proxy:
     image: traefik
-    container_name: traefik
-    restart: always
-    domainname: ${DOMAINNAME}
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     command: --docker
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - OVH_ENDPOINT=ovh-eu
+      - OVH_APPLICATION_KEY=${OVH_APPLICATION_KEY}
+      - OVH_APPLICATION_SECRET=${OVH_APPLICATION_SECRET}
+      - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock 
       - /opt/appdata/docker/traefik.toml:/traefik.toml
       - /opt/appdata/docker/acme.json:/acme.json
     networks:
       - traefik_network
-        #- default
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_network"
@@ -25,16 +37,14 @@ services:
 #----------------------------------------------------------------
   nginx-dizolo:
     image: nginx
-    container_name: nginx-dizolo
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     volumes:
       - /opt/appdata/nginx-dizolo:/usr/share/nginx/html:ro
-        #environment:
-        #  - PUID=${PUID}
-        #  - PGID=${PGID}
-        #  - TZ=Europe/Paris
-    expose:
-      - "80"
     networks:
       - traefik_network 
     labels:
@@ -46,12 +56,14 @@ services:
 #----------------------------------------------------------------
   nginx-startpage:
     image: nginx
-    container_name: nginx-startpage
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     volumes:
       - /opt/appdata/nginx-startpage:/usr/share/nginx/html:ro
-    expose:
-      - "80"
     networks:
       - traefik_network 
     labels:
@@ -63,8 +75,12 @@ services:
 #----------------------------------------------------------------
   emby:
     image: emby/embyserver
-    container_name: emby
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     volumes:
       - /opt/appdata/emby/config:/config
       - /mnt/videos/Films:/movies
@@ -75,13 +91,9 @@ services:
     environment:
       - UID=${PUID}
       - GID=${PGID}
-        #- GIDLIST=1001
       - TZ=Europe/Paris
     networks:
       - traefik_network
-        #  - default
-    expose:
-        - "8096"
     labels:
       - "traefik.docker.network=traefik_network"
       - "traefik.enable=true"
@@ -91,8 +103,12 @@ services:
 #----------------------------------------------------------------
   calibre-web:
     image: linuxserver/calibre-web
-    container_name: calibre-web
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     volumes:
       - /opt/appdata/calibre-web/config:/config
       - /home/.data/documents/bouquins:/books
@@ -100,8 +116,6 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=Europe/Paris
-    expose:
-      - "8083"
     networks:
       - traefik_network 
     labels:
@@ -113,16 +127,18 @@ services:
 #----------------------------------------------------------------
   freshrss:
     image: linuxserver/freshrss
-    container_name: freshrss
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     volumes:
       - /opt/appdata/freshrss/config:/config
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=Europe/Paris
-    expose:
-      - "80"
     networks:
       - traefik_network 
     labels:
@@ -132,8 +148,24 @@ services:
       - "traefik.port=80"
  
 #----------------------------------------------------------------
+#  rss-bridge:
+#    image: rssbridge/rss-bridge
+#    restart: always
+#    volumes:
+#      - /opt/appdata/rss-bridge/whitelist.txt:/app/public/whitelist.txt
+#    expose:
+#      - "3000"
+#    networks:
+#      - traefik_network 
+#    labels:
+#      - "traefik.docker.network=traefik_network"
+#      - "traefik.enable=true"
+#      - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
+#      - "traefik.port=3000"
+# 
+#----------------------------------------------------------------
 networks:
   traefik_network:
-    external: true
+    external: false
   default:
     driver: bridge
