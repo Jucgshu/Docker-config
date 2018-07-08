@@ -2,85 +2,98 @@
 version: '3.6'
 
 services:
-  reverse-proxy:
+  traefik:
     image: traefik
+    command:
+      - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
+      - "--entrypoints=Name:https Address::443 TLS"
+      - "--defaultentrypoints=http,https"
+      - "--acme"
+      - "--acme.storage=/acme.json"
+      - "--acme.entryPoint=https"
+      - "--acme.httpChallenge.entryPoint=http"
+      - "--acme.onHostRule=true"
+      - "--acme.onDemand=false"
+      - "--acme.email=support@dizolo.eu"
+      - "--docker"
+      - "--docker.swarmMode"
+      - "--docker.domain=dizolo.eu"
+      - "--docker.watch"
+    ports:
+      - target: 80
+        published: 80
+        mode: host
+      - target: 443
+        published: 443
+        mode: host
+        #environment:
+        #  - OVH_ENDPOINT=ovh-eu
+        #  - OVH_APPLICATION_KEY=${OVH_APPLICATION_KEY}
+        #  - OVH_APPLICATION_SECRET=${OVH_APPLICATION_SECRET}
+        #  - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock 
+      - /opt/appdata/docker-config/dizolo/traefik.toml:/traefik.toml
+      - /opt/appdata/docker-config/dizolo/acme/acme.json:/acme.json
+    networks:
+      - traefik_network
     deploy:
-      replicas: 2
-      update_config:
-        parallelism: 2
-        delay: 10s
-        order: stop-first
+        #replicas: 2 
+        #update_config:
+        #  parallelism: 2
+        #  delay: 10s
+        #  order: stop-first
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
-    command: --docker
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - OVH_ENDPOINT=ovh-eu
-      - OVH_APPLICATION_KEY=${OVH_APPLICATION_KEY}
-      - OVH_APPLICATION_SECRET=${OVH_APPLICATION_SECRET}
-      - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock 
-      - /opt/appdata/docker-config/dizolo/traefik.toml:/traefik.toml
-      - /opt/appdata/docker-config/dizolo/assets/acme.json:/acme.json
-    networks:
-      - traefik_network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik_network"
+      labels:
+        - "traefik.enable=true"
+        - "traefik.port=80"
+        - "traefik.docker.network=traefik_network"
 
 #----------------------------------------------------------------
   nginx-dizolo:
     image: nginx
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
     volumes:
       - /opt/appdata/nginx-dizolo:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
-    labels:
-      - "traefik.docker.network=traefik_network"
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:${DOMAINNAME}"
-      - "traefik.port=80"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.port=80"
+        - "traefik.frontend.rule=Host:${DOMAINNAME}"
 
 #----------------------------------------------------------------
   nginx-startpage:
     image: nginx
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
     volumes:
       - /opt/appdata/nginx-startpage:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
-    labels:
-      - "traefik.docker.network=traefik_network"
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:search.${DOMAINNAME}"
-      - "traefik.port=80"
-
-#----------------------------------------------------------------
-  emby:
-    image: emby/embyserver
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+      labels:
+        - "traefik.docker.network=traefik_network"
+        - "traefik.enable=true"
+        - "traefik.frontend.rule=Host:start.${DOMAINNAME}"
+        - "traefik.port=80"
+
+#----------------------------------------------------------------
+  emby:
+    image: emby/embyserver
     volumes:
       - /opt/appdata/emby/config:/config
       - /mnt/videos/Films:/movies
@@ -94,21 +107,21 @@ services:
       - TZ=Europe/Paris
     networks:
       - traefik_network
-    labels:
-      - "traefik.docker.network=traefik_network"
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:media.${DOMAINNAME}"
-      - "traefik.port=8096"
-
-#----------------------------------------------------------------
-  calibre-web:
-    image: linuxserver/calibre-web
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+      labels:
+        - "traefik.docker.network=traefik_network"
+        - "traefik.enable=true"
+        - "traefik.frontend.rule=Host:media.${DOMAINNAME}"
+        - "traefik.port=8096"
+
+#----------------------------------------------------------------
+  calibre-web:
+    image: linuxserver/calibre-web
     volumes:
       - /opt/appdata/calibre-web/config:/config
       - /home/.data/documents/bouquins:/books
@@ -118,21 +131,21 @@ services:
       - TZ=Europe/Paris
     networks:
       - traefik_network 
-    labels:
-      - "traefik.docker.network=traefik_network"
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:books.${DOMAINNAME}"
-      - "traefik.port=8083"
-
-#----------------------------------------------------------------
-  freshrss:
-    image: linuxserver/freshrss
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+      labels:
+        - "traefik.docker.network=traefik_network"
+        - "traefik.enable=true"
+        - "traefik.frontend.rule=Host:books.${DOMAINNAME}"
+        - "traefik.port=8083"
+
+#----------------------------------------------------------------
+  freshrss:
+    image: linuxserver/freshrss
     volumes:
       - /opt/appdata/freshrss/config:/config
     environment:
@@ -141,11 +154,17 @@ services:
       - TZ=Europe/Paris
     networks:
       - traefik_network 
-    labels:
-      - "traefik.docker.network=traefik_network"
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:feeds.${DOMAINNAME}"
-      - "traefik.port=80"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels:
+        - "traefik.docker.network=traefik_network"
+        - "traefik.enable=true"
+        - "traefik.frontend.rule=Host:feeds.${DOMAINNAME}"
+        - "traefik.port=80"
  
 #----------------------------------------------------------------
 #  rss-bridge:
@@ -166,6 +185,6 @@ services:
 #----------------------------------------------------------------
 networks:
   traefik_network:
-    external: false
-  default:
-    driver: bridge
+      #     driver: overlay
+      external: true
+

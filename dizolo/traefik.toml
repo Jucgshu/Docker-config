@@ -22,7 +22,7 @@ exposedByDefault = false
 
 [acme]
 email = "postmaster@dizolo.eu"
-storage = "acme.json"
+storage = "assets/acme.json"
 entryPoint = "https"
 onHostRule = true
 [acme.httpChallenge]
