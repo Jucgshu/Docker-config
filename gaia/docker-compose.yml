@@ -3,131 +3,102 @@ version: '3.6'
 
 services:
   traefik:
-    image: traefik 
-    command: --docker.swarmmode --docker.domain=traefik --docker.watch # --docker.endpoint=unix://var/run/docker.sock -l DEBUG
+    image: traefik
+    command: --docker.swarmmode --docker.domain=gaia.local --docker.watch -l DEBUG
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "80:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock 
-    networks:
-      - "traefik_network"
     deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
       labels:
         - "traefik.enable=true"
         - "traefik.port=80"
-        - "traefik.docker.network=gaia_traefik_network"
+        - "traefik.docker.network=traefik_network"
+
+  # Torrent downloader (https://transmissionbt.com/)
+  transmission:
+    image: linuxserver/transmission
+    volumes:
+      - /opt/appdata/transmission/config:/config
+      - /mnt/storage/Downloads/Torrents:/downloads
+      - /mnt/storage/Videos/Movies:/movies
+      - /mnt/storage/Downloads/Torrents/.incomplete:/downloads/.incomplete
+      - /mnt/storage/Downloads/Torrents/.watch:/watch
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Paris
+    ports:
+      - "51413:51413"
+      - "51413:51413/udp"
+      - "9091:9091"
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.port=9091"
 
   # Home media server (https://emby.media/)
   emby:
     image: emby/embyserver
     volumes:
       - /opt/appdata/emby/config:/config
-      - /mnt/storage/videos/movies:/mnt/movies
-      - /mnt/storage/videos/tvshow:/mnt/tvshows
-      - /mnt/storage/audio/music:/mnt/music
+      - /mnt/storage/Videos/Movies:/mnt/movies
+      - /mnt/storage/Videos/TVShows:/mnt/tvshows
+      - /mnt/storage/Videos/TV:/mnt/tv
+      - /mnt/storage/Videos/Animation Movies:/mnt/animation
+      - /mnt/storage/Videos/Anime:/mnt/animes
+      - /mnt/storage/Audio/Music:/mnt/music
+      - /mnt/storage/Books/Books:/mnt/books
+      - /mnt/storage/Images/Photos:/mnt/photos
+      - /mnt/storage/Downloads/Torrents:/mnt/downloads
     environment:
       - UID=${PUID}
       - GID=${PGID}
+        #    networks:
+        #      - traefik_network 
+    ports:
+      - "8096:8096"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.port=8096"
+        - "traefik.frontend.rule=PathPrefix:/,/emby"
+
+  # Open, trustworthy and decentralized sync and cloud services (https://syncthing.net/)
+  syncthing:
+    image: linuxserver/syncthing
+    volumes:
+      - /opt/appdata/syncthing/config:/config
+      - /mnt/storage/Audio/Sync:/singles
+      - /mnt/storage/Books:/books
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
       - TZ=Europe/Paris
-    networks:
-        - traefik_network
+    ports:
+      - "8384:8384"
+      - "22000:22000"
+      - "21027:21027/udp"
     deploy:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=traefik_network"
-        - "traefik.frontend.rule=PathPrefix:/emby"
-        - "traefik.port=8096"
+        - "traefik.port=8384"
+          #- "traefik.frontend.rule=Path:/sync"
+        - "traefik.frontend.rule=PathPrefixStrip: /syncthing/"
 
-# Browsing, reading and downloading eBooks (https://github.com/janeczku/calibre-web)
-#  freshrss:
-#    image: linuxserver/freshrss
-#    container_name: freshrss
-#    restart: always
-#    volumes:
-#      - /opt/appdata/freshrss/config:/config
-#    environment:
-#      - PUID=${PUID}
-#      - PGID=${PGID}
-#      - TZ=Europe/Paris
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.port=80"
-#      - "traefik.frontend.rule=Host:feeds.localhost"
-
-#  koel:
-#    image: 0xcaff/koel
-#    container_name: koel
-#    depends_on:
-#      - database
-#    ports:
-#      - 80:80
-#    environment:
-#      DB_CONNECTION: mysql
-#      DB_HOST: database
-#      DB_USERNAME: koel
-#      DB_PASSWORD: koel
-#      DB_DATABASE: koel
-#    volumes:
-#      - /mnt/storage/audio/music:/music
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.port=80"
-#      - "traefik.frontend.rule=Host:music.localhost"
-#
-#  database:
-#    image: mysql/mysql-server:5.7
-#    container_name: mysql
-#    volumes:
-#      - /opt/appdata/mysql:/var/lib/mysql
-#    environment:
-#      MYSQL_ROOT_PASSWORD: MonSuperMDPMySQL1933!
-#      MYSQL_DATABASE: koel
-#      MYSQL_USER: koel
-#      MYSQL_PASSWORD: koel
-
-## wiki app (https://wiki.js.org/)
-#  wikidb:
-#    image: mongo
-#    container_name: wikijs_db
-#    expose:
-#      - '27017'
-#    command: '--smallfiles --bind_ip wikidb'
-#    environment:
-#      - 'MONGO_LOG_DIR=/dev/null'
-#    volumes:
-#      - /opt/appdata/mongo:/data/db
-#  wikijs:
-#    image: 'requarks/wiki:latest'
-#    container_name: wikijs
-#    links:
-#      - wikidb
-#    depends_on:
-#      - wikidb
-#    environment:
-#      WIKI_ADMIN_EMAIL: support@dizolo.eu
-#    volumes:
-#      - /opt/appdata/wikijs/config.yml:/var/wiki/config.yml
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.port=3000"
-#      - "traefik.frontend.rule=Host:wiki.localhost"
-
-#  # Browsing, reading and downloading eBooks (https://github.com/janeczku/calibre-web)
-#  calibre-web:
-#    image: linuxserver/calibre-web
-#    container_name: calibre
-#    restart: always
-#    volumes:
-#      - /opt/appdata/calibre-web/config:/config
-#      - /home/br3wal/Livres:/books
-#    environment:
-#      - PUID=${PUID}
-#      - PGID=${PGID}
-#      - TZ=Europe/Paris
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.port=8083"
-#      - "traefik.frontend.rule=Host:calibre.localhost"
 networks:
-  traefik_network:
-    driver: overlay
+  default:
+      name: traefik_network
