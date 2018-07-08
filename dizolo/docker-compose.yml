@@ -27,7 +27,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock 
       - /opt/appdata/docker/traefik.toml:/traefik.toml
-      - /opt/appdata/docker/acme.json:/acme.json
+      - /opt/appdata/docker/assets/acme.json:/acme.json
     networks:
       - traefik_network
     labels:
