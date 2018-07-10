@@ -38,11 +38,6 @@ services:
     networks:
       - traefik_network
     deploy:
-        #replicas: 2 
-        #update_config:
-        #  parallelism: 2
-        #  delay: 10s
-        #  order: stop-first
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -66,6 +61,11 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      replicas: 2 
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=traefik_network"
@@ -85,6 +85,11 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      replicas: 2 
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
       labels:
         - "traefik.docker.network=traefik_network"
         - "traefik.enable=true"
@@ -137,6 +142,11 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      replicas: 2 
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
       labels:
         - "traefik.docker.network=traefik_network"
         - "traefik.enable=true"
