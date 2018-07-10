@@ -47,11 +47,10 @@ services:
         - "traefik.port=80"
         - "traefik.docker.network=traefik_network"
 
-#----------------------------------------------------------------
-  nginx-dizolo:
+  nginx-home:
     image: nginx
     volumes:
-      - ${USERDIR}/nginx-dizolo:/usr/share/nginx/html:ro
+      - ${USERDIR}/nginx-home:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
     deploy:
@@ -71,11 +70,10 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:${DOMAINNAME}"
 
-#----------------------------------------------------------------
-  nginx-startpage:
+  nginx-start:
     image: nginx
     volumes:
-      - ${USERDIR}/nginx-startpage:/usr/share/nginx/html:ro
+      - ${USERDIR}/nginx-start:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
     deploy:
@@ -95,7 +93,6 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:start.${DOMAINNAME}"
 
-#----------------------------------------------------------------
   emby:
     image: emby/embyserver
     volumes:
@@ -123,7 +120,6 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:media.${DOMAINNAME}"
 
-#----------------------------------------------------------------
   calibre-web:
     image: linuxserver/calibre-web
     volumes:
@@ -152,7 +148,6 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:books.${DOMAINNAME}"
 
-#----------------------------------------------------------------
   freshrss:
     image: linuxserver/freshrss
     volumes:
@@ -175,7 +170,6 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:feeds.${DOMAINNAME}"
  
-#----------------------------------------------------------------
 #  rss-bridge:
 #    image: rssbridge/rss-bridge
 #    volumes:
@@ -188,7 +182,6 @@ services:
 #      - "traefik.docker.network=traefik_network"
 #      - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
 # 
-#----------------------------------------------------------------
 networks:
   traefik_network:
       external: true
