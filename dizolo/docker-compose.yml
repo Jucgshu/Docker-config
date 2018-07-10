@@ -99,7 +99,7 @@ services:
   emby:
     image: emby/embyserver
     volumes:
-      - ${USERDIR}/emby/config:/config
+      - ${USERDIR}/emby:/config
       - /mnt/videos/Films:/movies
       - /mnt/storage/TVShows:/tvshows
       - /mnt/storage/Animes:/tvanime
@@ -127,7 +127,7 @@ services:
   calibre-web:
     image: linuxserver/calibre-web
     volumes:
-      - ${USERDIR}/calibre-web/config:/config
+      - ${USERDIR}/calibre-web:/config
       - /home/.data/documents/bouquins:/books
     environment:
       - PUID=${PUID}
@@ -156,7 +156,7 @@ services:
   freshrss:
     image: linuxserver/freshrss
     volumes:
-      - ${USERDIR}/freshrss/config:/config
+      - ${USERDIR}/freshrss:/config
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -178,18 +178,15 @@ services:
 #----------------------------------------------------------------
 #  rss-bridge:
 #    image: rssbridge/rss-bridge
-#    restart: always
 #    volumes:
-#      - /opt/appdata/rss-bridge/whitelist.txt:/app/public/whitelist.txt
-#    expose:
-#      - "3000"
+#      - ${USERDIR}/rss-bridge/whitelist.txt:/app/public/whitelist.txt
 #    networks:
 #      - traefik_network 
 #    labels:
-#      - "traefik.docker.network=traefik_network"
 #      - "traefik.enable=true"
-#      - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
 #      - "traefik.port=3000"
+#      - "traefik.docker.network=traefik_network"
+#      - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
 # 
 #----------------------------------------------------------------
 networks:
