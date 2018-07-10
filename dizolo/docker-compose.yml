@@ -17,7 +17,7 @@ services:
       - "--acme.email=support@dizolo.eu"
       - "--docker"
       - "--docker.swarmMode"
-      - "--docker.domain=dizolo.eu"
+      - "--docker.domain=${DOMAINNAME}"
       - "--docker.watch"
     ports:
       - target: 80
@@ -33,7 +33,6 @@ services:
         #  - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock 
-      - /opt/appdata/docker-config/dizolo/traefik.toml:/traefik.toml
       - /opt/appdata/docker-config/dizolo/acme/acme.json:/acme.json
     networks:
       - traefik_network
