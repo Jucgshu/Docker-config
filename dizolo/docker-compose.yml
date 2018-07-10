@@ -14,7 +14,7 @@ services:
       - "--acme.httpChallenge.entryPoint=http"
       - "--acme.onHostRule=true"
       - "--acme.onDemand=false"
-      - "--acme.email=support@dizolo.eu"
+      - "--acme.email=${ACME_EMAIL}"
       - "--docker"
       - "--docker.swarmMode"
       - "--docker.domain=${DOMAINNAME}"
@@ -33,7 +33,7 @@ services:
         #  - OVH_CONSUMER_KEY=${OVH_CONSUMER_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock 
-      - /opt/appdata/docker-config/dizolo/acme/acme.json:/acme.json
+      - ${USERDIR}/docker-config/dizolo/acme/acme.json:/acme.json
     networks:
       - traefik_network
     deploy:
@@ -51,7 +51,7 @@ services:
   nginx-dizolo:
     image: nginx
     volumes:
-      - /opt/appdata/nginx-dizolo:/usr/share/nginx/html:ro
+      - ${USERDIR}/nginx-dizolo:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
     deploy:
@@ -75,7 +75,7 @@ services:
   nginx-startpage:
     image: nginx
     volumes:
-      - /opt/appdata/nginx-startpage:/usr/share/nginx/html:ro
+      - ${USERDIR}/nginx-startpage:/usr/share/nginx/html:ro
     networks:
       - traefik_network 
     deploy:
@@ -99,7 +99,7 @@ services:
   emby:
     image: emby/embyserver
     volumes:
-      - /opt/appdata/emby/config:/config
+      - ${USERDIR}/emby/config:/config
       - /mnt/videos/Films:/movies
       - /mnt/storage/TVShows:/tvshows
       - /mnt/storage/Animes:/tvanime
@@ -127,7 +127,7 @@ services:
   calibre-web:
     image: linuxserver/calibre-web
     volumes:
-      - /opt/appdata/calibre-web/config:/config
+      - ${USERDIR}/calibre-web/config:/config
       - /home/.data/documents/bouquins:/books
     environment:
       - PUID=${PUID}
@@ -156,7 +156,7 @@ services:
   freshrss:
     image: linuxserver/freshrss
     volumes:
-      - /opt/appdata/freshrss/config:/config
+      - ${USERDIR}/freshrss/config:/config
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
