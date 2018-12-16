@@ -1,5 +1,5 @@
 ---
-version: '3.6'
+version: '3.7'
 
 services:
   traefik:
@@ -18,6 +18,7 @@ services:
       - "--docker"
       - "--docker.swarmMode"
       - "--docker.domain=${DOMAINNAME}"
+      - "--docker.domain=${DOMAINNAME2}"
       - "--docker.watch"
     ports:
       - target: 80
@@ -39,9 +40,9 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        #delay: 5s
+        #max_attempts: 5
+        #window: 120s
       labels:
         - "traefik.enable=true"
         - "traefik.port=80"
@@ -59,7 +60,7 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-      replicas: 2 
+      replicas: 2
       update_config:
         parallelism: 2
         delay: 10s
@@ -93,14 +94,63 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:start.${DOMAINNAME}"
 
-  emby:
-    image: emby/embyserver
+  nginx-dejavu:
+    image: nginx
     volumes:
-      - ${USERDIR}/emby:/config
+      - ${USERDIR}/nginx-dejavu:/usr/share/nginx/html:ro
+    networks:
+      - traefik_network 
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      replicas: 2 
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+      labels:
+        - "traefik.enable=true"
+        - "traefik.port=80"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.frontend.rule=Host:${DOMAINNAME2}"
+
+          #  ghost-dejavu:
+          #    image: ghost
+          #    volumes:
+          #      - ${USERDIR}/ghost-dejavu:/var/lib/ghost/content
+          #    environment:
+          #      - url=https://deja-vu.world/wow
+          #    networks:
+          #      - traefik_network 
+          #    deploy:
+          #      restart_policy:
+          #        condition: on-failure
+          #        delay: 5s
+          #        max_attempts: 3
+          #        window: 120s
+          #        #replicas: 2 
+          #        #update_config:
+          #        #  parallelism: 2
+          #        #  delay: 10s
+          #        #  order: stop-first
+          #      labels:
+          #        - "traefik.enable=true"
+          #        - "traefik.port=2368"
+          #        - "traefik.docker.network=traefik_network"
+          #          #- "traefik.frontend.rule=Host:${DOMAINNAME2}"
+          #        - "traefik.frontend.rule=Host:${DOMAINNAME2};PathPrefix: /wow"
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    volumes:
+      - ${USERDIR}/jellyfin:/config
       - /mnt/videos/Films:/movies
       - /mnt/storage/TVShows:/tvshows
       - /mnt/storage/Animes:/tvanime
-      - /mnt/storage/audio/music:/music
+      - /mnt/audio:/audio
       - /mnt/videos/Emissions:/emissions
     environment:
       - UID=${PUID}
@@ -170,18 +220,69 @@ services:
         - "traefik.docker.network=traefik_network"
         - "traefik.frontend.rule=Host:feeds.${DOMAINNAME}"
  
-#  rss-bridge:
-#    image: rssbridge/rss-bridge
-#    volumes:
-#      - ${USERDIR}/rss-bridge/whitelist.txt:/app/public/whitelist.txt
-#    networks:
-#      - traefik_network 
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.port=3000"
-#      - "traefik.docker.network=traefik_network"
-#      - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
-# 
+  rssbridge:
+    image: rssbridge/rss-bridge
+    volumes:
+      - ${USERDIR}/rss-bridge/whitelist.txt:/app/public/whitelist.txt
+    environment:
+      - APACHE_SERVER_NAME=bridge.${DOMAINNAME}
+      - TZ=Europe/Paris
+    networks:
+      - traefik_network 
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.port=80"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.frontend.rule=Host:bridge.${DOMAINNAME}"
+ 
+          #  wikijs:
+          #    image: requarks/wiki:latest
+          #    volumes:
+          #      - ${USERDIR}/wikijs/config.yml:/var/wiki/config.yml
+          #    environment:
+          #      - WIKI_ADMIN_EMAIL= support@dizolo.eu
+          #      - TZ=Europe/Paris
+          #    networks:
+          #      - traefik_network 
+          #    depends_on:
+          #      - wikidb
+          #    deploy:
+          #      restart_policy:
+          #        condition: on-failure
+          #        delay: 5s
+          #        max_attempts: 3
+          #        window: 120s
+          #      labels:
+          #        - "traefik.enable=true"
+          #        - "traefik.port=80"
+          #        - "traefik.docker.network=traefik_network"
+          #        - "traefik.frontend.rule=Host:wiki.${DOMAINNAME}"
+          #  wikidb:
+          #    image: mongo
+          #    volumes:
+          #      - ${USERDIR}/wikijs/mongo:/data/db
+          #    environment:
+          #      - 'MONGO_LOG_DIR=/dev/null'
+          #    networks:
+          #      - traefik_network 
+          #    command: '--smallfiles --bind_ip wikidb'
+          #    deploy:
+          #      restart_policy:
+          #        condition: on-failure
+          #        delay: 5s
+          #        max_attempts: 3
+          #        window: 120s
+          #      labels:
+          #        - "traefik.enable=true"
+          #        - "traefik.port=27017"
+          #        - "traefik.docker.network=traefik_network"
+ 
 networks:
   traefik_network:
-      external: true
+      external: true # docker network create --driver=overlay --attachable traefik_network
